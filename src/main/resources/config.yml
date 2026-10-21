@@ -1,0 +1,20 @@
+creation-interval-seconds: 10
+
+messages:
+  prefix: '' # Le préfixe global est géré par message individuel
+  
+  # Modifié pour refléter l'utilisation du schematic par défaut
+  added-to-queue: '&7&l« &a&lSH &8&l» &7Vous avez été ajouté à la file d''attente.
+    Votre île sera créée dans &a%time% &7secondes. Position : &a%position%&7.'
+  creation-in-progress: '&7&l« &a&lSH &8&l» &fVotre nouvelle aventure commence !'
+  creation-successful: ''
+  creation-failed: '&7&l« &c&lSH &8&l» &7La création de votre île a &céchoué&7. Veuillez
+    réessayer ou contacter un administrateur.'
+  already-in-queue: '&7&l« &c&lSH &8&l» &7Vous êtes déjà dans la file d''attente pour
+    la création d''une île.'
+  already-has-island: '&7&l« &c&lSH &8&l» &7Vous possédez déjà une île !'
+  player-offline: '&7&l« &c&lSH &8&l» &7Le joueur &c%player% &7était hors ligne lors
+    de la tentative de création de son île.'
+  # Nouveau message
+  no-default-schematic: '&7&l« &c&lSH &8&l» &7Aucun schematic par défaut n''est configuré
+    sur le serveur. Impossible de créer votre île. &cContactez un administrateur&7.'
