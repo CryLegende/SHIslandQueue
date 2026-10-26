@@ -11,6 +11,7 @@ import org.bukkit.block.Biome; // Import pour le type Biome
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
 
 import java.math.BigDecimal; // Import pour BigDecimal
@@ -20,6 +21,9 @@ import java.util.UUID;
 import java.util.logging.Level;
 
 public class SHIslandQueue extends JavaPlugin {
+
+    // Délai max (en secondes) laissé à SSB2 pour finir de créer une île de la file
+    private static final int CREATION_CHECK_ATTEMPTS = 60;
 
     private final Queue<QueuedCreation> creationQueue = new LinkedList<>();
     private final UuidSet processingPlayers = new UuidSet();
@@ -172,7 +176,7 @@ public class SHIslandQueue extends JavaPlugin {
                 SuperiorPlayer superiorPlayerToProcess = SuperiorSkyblockAPI.getPlayer(playerToProcess);
                 if (superiorPlayerToProcess == null) {
                     getLogger().severe("Impossible de convertir le joueur Bukkit " + playerToProcess.getName() + " en SuperiorPlayer.");
-                    playerToProcess.sendMessage(getMessage("creation-failed"));
+                    sendMessage(playerToProcess, getMessage("creation-failed"));
                     creationQueue.poll(); // Retirer de la file car on ne peut pas traiter
                     processingPlayers.remove(playerToProcess.getUniqueId()); // Assurer le nettoyage
                     nextAvailableSlotTimestamp = currentTime + (creationIntervalSeconds * 1000L);
@@ -182,12 +186,12 @@ public class SHIslandQueue extends JavaPlugin {
                 creationQueue.poll();
 
                 if (SuperiorSkyblockAPI.getGrid().getIsland(superiorPlayerToProcess.getUniqueId()) != null) {
-                    playerToProcess.sendMessage(getMessage("already-has-island"));
+                    sendMessage(playerToProcess, getMessage("already-has-island"));
                     nextAvailableSlotTimestamp = currentTime + (creationIntervalSeconds * 1000L);
                     return;
                 }
 
-                playerToProcess.sendMessage(getMessage("creation-in-progress"));
+                sendMessage(playerToProcess, getMessage("creation-in-progress"));
                 getLogger().info("Processing island creation for " + playerToProcess.getName());
                 processingPlayers.add(playerToProcess.getUniqueId());
 
@@ -201,7 +205,7 @@ public class SHIslandQueue extends JavaPlugin {
                 }
 
                 if (schematicToUse == null) {
-                    playerToProcess.sendMessage(getMessage("no-default-schematic"));
+                    sendMessage(playerToProcess, getMessage("no-default-schematic"));
                     getLogger().severe("Aucun schematic par défaut ou disponible trouvé pour " + playerToProcess.getName());
                     processingPlayers.remove(playerToProcess.getUniqueId());
                     nextAvailableSlotTimestamp = currentTime + (creationIntervalSeconds * 1000L);
@@ -241,17 +245,10 @@ public class SHIslandQueue extends JavaPlugin {
                             BigDecimal.ZERO, BigDecimal.ZERO,
                             finalIslandBiome, islandNameForCreation, false); // Appel corrigé
 
-                        Island newIsland = finalGridManager.getIsland(superiorPlayerToProcess.getUniqueId());
-
-                        if (newIsland != null) {
-                            playerToProcess.sendMessage(getMessage("creation-successful"));
-                            getLogger().info("Successfully created island for " + playerToProcess.getName());
-                        } else {
-                            playerToProcess.sendMessage(getMessage("creation-failed"));
-                            getLogger().log(Level.WARNING, "Failed to create island for " + playerToProcess.getName() + " or island object not immediately retrievable.");
-                        }
+                        // SSB2 colle le schematic en asynchrone : l'île n'est enregistrée qu'à la fin
+                        awaitIslandCreation(superiorPlayerToProcess.getUniqueId(), playerToProcess.getName());
                     } catch (Exception e) {
-                        playerToProcess.sendMessage(getMessage("creation-failed"));
+                        sendMessage(playerToProcess, getMessage("creation-failed"));
                         getLogger().log(Level.SEVERE, "Exception during island creation for " + playerToProcess.getName(), e);
                     } finally {
                         processingPlayers.remove(playerToProcess.getUniqueId());
@@ -260,6 +257,39 @@ public class SHIslandQueue extends JavaPlugin {
                 nextAvailableSlotTimestamp = currentTime + (creationIntervalSeconds * 1000L);
             }
         }, 20L, 20L);
+    }
+
+    /**
+     * Attend que SSB2 ait enregistré l'île (vérifié chaque seconde) avant d'annoncer le résultat.
+     */
+    private void awaitIslandCreation(UUID playerUniqueId, String playerName) {
+        new BukkitRunnable() {
+            private int attempts = 0;
+
+            @Override
+            public void run() {
+                Island newIsland = SuperiorSkyblockAPI.getGrid().getIsland(playerUniqueId);
+                Player player = Bukkit.getPlayer(playerUniqueId);
+                if (newIsland != null) {
+                    sendMessage(player, getMessage("creation-successful"));
+                    getLogger().info("Successfully created island for " + playerName);
+                    cancel();
+                } else if (++attempts >= CREATION_CHECK_ATTEMPTS) {
+                    sendMessage(player, getMessage("creation-failed"));
+                    getLogger().log(Level.WARNING, "Failed to create island for " + playerName + " or island object not retrievable after " + CREATION_CHECK_ATTEMPTS + "s.");
+                    cancel();
+                }
+            }
+        }.runTaskTimer(this, 20L, 20L);
+    }
+
+    /**
+     * Un message vide dans la config est désactivé (pas de ligne blanche dans le chat).
+     */
+    static void sendMessage(Player player, String message) {
+        if (player != null && player.isOnline() && message != null && !message.isEmpty()) {
+            player.sendMessage(message);
+        }
     }
 
     public com.bgsoftware.superiorskyblock.api.handlers.GridManager getSsbGridManager() {

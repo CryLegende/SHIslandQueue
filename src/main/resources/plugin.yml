@@ -6,4 +6,3 @@ author: Cry_Legende
 description: Gère une file d'attente pour la création d'îles SuperiorSkyBlock2.
 depend: [SuperiorSkyblock2]
 softdepend: []
-loadbefore: [SuperiorSkyblock2]

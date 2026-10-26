@@ -42,7 +42,7 @@ public class IslandCreationListener implements Listener {
 
         QueuedCreation checkRequest = new QueuedCreation(player.getUniqueId(), player.getName());
         if (plugin.getCreationQueue().contains(checkRequest)) {
-            player.sendMessage(plugin.getMessage("already-in-queue"));
+            SHIslandQueue.sendMessage(player, plugin.getMessage("already-in-queue"));
             event.setCancelled(true);
             return;
         }
@@ -63,7 +63,7 @@ public class IslandCreationListener implements Listener {
                 (long) (plugin.getCreationQueue().size() - 1) * plugin.getCreationIntervalSeconds() * 1000L;
             long estimatedWaitSeconds = (estimatedWaitMillis + 500) / 1000L;
 
-            player.sendMessage(plugin.getMessage("added-to-queue",
+            SHIslandQueue.sendMessage(player, plugin.getMessage("added-to-queue",
                 "%time%", String.valueOf(estimatedWaitSeconds),
                 "%position%", String.valueOf(plugin.getCreationQueue().size())));
 
