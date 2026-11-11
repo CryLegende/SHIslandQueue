@@ -6,3 +6,22 @@ author: Cry_Legende
 description: Gère une file d'attente pour la création d'îles SuperiorSkyBlock2.
 depend: [SuperiorSkyblock2]
 softdepend: []
+
+commands:
+  shislandqueue:
+    description: Administration de la file d'attente de création d'îles
+    usage: /<command> <reload|list>
+
+permissions:
+  shislandqueue.admin:
+    description: Toutes les commandes d'administration de SHIslandQueue
+    default: op
+    children:
+      shislandqueue.admin.reload: true
+      shislandqueue.admin.list: true
+  shislandqueue.admin.reload:
+    description: Recharger config.yml et messages.yml
+    default: false
+  shislandqueue.admin.list:
+    description: Voir la file d'attente de création d'îles
+    default: false

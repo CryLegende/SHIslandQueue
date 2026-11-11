@@ -1,0 +1,27 @@
+# Messages de SHIslandQueue. Codes couleur & acceptés. Un message vide n'est pas envoyé.
+# Placeholders : %time% (secondes d'attente), %position% (rang dans la file), %player% (pseudo),
+# %subcommands% (sous-commandes permises), %file% et %error% (fichier illisible), %interval% (secondes),
+# %slot% (secondes avant le prochain créneau), %count% (joueurs en file), %wait% (attente estimée en secondes).
+
+# Préfixe global ajouté à la place de %prefix% ; chaque message porte déjà le sien.
+prefix: ''
+
+# Messages aux joueurs
+added-to-queue: '&7&l« &a&lSH &8&l» &7Vous avez été ajouté à la file d''attente. Votre île sera créée dans &a%time% &7secondes. Position : &a%position%&7.'
+creation-in-progress: '&7&l« &a&lSH &8&l» &fVotre nouvelle aventure commence !'
+creation-successful: ''
+creation-failed: '&7&l« &c&lSH &8&l» &7La création de votre île a &céchoué&7. Veuillez réessayer ou contacter un administrateur.'
+already-in-queue: '&7&l« &c&lSH &8&l» &7Vous êtes déjà dans la file d''attente pour la création d''une île.'
+already-has-island: '&7&l« &c&lSH &8&l» &7Vous possédez déjà une île !'
+# Écrit dans la console quand un joueur de la file s'est déconnecté
+player-offline: '&7&l« &c&lSH &8&l» &7Le joueur &c%player% &7était hors ligne lors de la tentative de création de son île.'
+no-default-schematic: '&7&l« &c&lSH &8&l» &7Aucun schematic par défaut n''est configuré sur le serveur. Impossible de créer votre île. &cContactez un administrateur&7.'
+
+# /shislandqueue
+no-permission: '&7&l« &c&lSH &8&l» &7Vous n''avez pas la &cpermission &7d''utiliser cette commande.'
+admin-usage: '&7&l« &e&lSH &8&l» &7Utilisation : &e/shislandqueue &7<&e%subcommands%&7>'
+reloaded: '&7&l« &a&lSH &8&l» &7Configuration de SHIslandQueue &arechargée &7(intervalle : &a%interval% &7secondes).'
+reload-failed: '&7&l« &c&lSH &8&l» &7Rechargement annulé : &c%file% &7est illisible (&c%error%&7). L''ancienne configuration est gardée.'
+list-empty: '&7&l« &e&lSH &8&l» &7La file d''attente est &evide&7. Un créneau toutes les &e%interval% &7secondes, prochain dans &e%slot% &7s.'
+list-header: '&7&l« &e&lSH &8&l» &7File d''attente : &e%count% &7joueur(s). Un créneau toutes les &e%interval% &7secondes, prochain dans &e%slot% &7s.'
+list-line: '&8• &e%position%. &f%player% &8» &7île créée dans environ &e%wait% &7s'

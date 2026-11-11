@@ -1,20 +1,22 @@
-creation-interval-seconds: 10
+# ----------------------------------------------------------------#
+#                 Configuration de SHIslandQueue                  #
+# ----------------------------------------------------------------#
+#
+# File d'attente pour la création d'îles SuperiorSkyblock2 : quand plusieurs joueurs créent leur île en même temps,
+# les créations sont étalées, une par créneau, pour ne pas bloquer le serveur. Un joueur qui arrive pendant un créneau
+# occupé est mis en file et son île est créée à son tour. Aucune commande joueur.
+#
+# Commande :
+#   /shislandqueue reload   Recharge config.yml et messages.yml. La file, le créneau en cours et les créations en
+#                           cours ne sont pas touchés.
+#   /shislandqueue list     Affiche la file d'attente, l'intervalle réglé et le temps avant le prochain créneau.
+#
+# Permissions :
+#   shislandqueue.admin           Toutes les commandes ci-dessus (op par défaut).
+#   shislandqueue.admin.reload    /shislandqueue reload
+#   shislandqueue.admin.list      /shislandqueue list
+#
+# Les textes envoyés aux joueurs et au staff sont dans messages.yml.
 
-messages:
-  prefix: '' # Le préfixe global est géré par message individuel
-  
-  # Modifié pour refléter l'utilisation du schematic par défaut
-  added-to-queue: '&7&l« &a&lSH &8&l» &7Vous avez été ajouté à la file d''attente.
-    Votre île sera créée dans &a%time% &7secondes. Position : &a%position%&7.'
-  creation-in-progress: '&7&l« &a&lSH &8&l» &fVotre nouvelle aventure commence !'
-  creation-successful: ''
-  creation-failed: '&7&l« &c&lSH &8&l» &7La création de votre île a &céchoué&7. Veuillez
-    réessayer ou contacter un administrateur.'
-  already-in-queue: '&7&l« &c&lSH &8&l» &7Vous êtes déjà dans la file d''attente pour
-    la création d''une île.'
-  already-has-island: '&7&l« &c&lSH &8&l» &7Vous possédez déjà une île !'
-  player-offline: '&7&l« &c&lSH &8&l» &7Le joueur &c%player% &7était hors ligne lors
-    de la tentative de création de son île.'
-  # Nouveau message
-  no-default-schematic: '&7&l« &c&lSH &8&l» &7Aucun schematic par défaut n''est configuré
-    sur le serveur. Impossible de créer votre île. &cContactez un administrateur&7.'
+# Délai, en secondes, entre deux créations d'îles. Un nouvel intervalle s'applique à partir du prochain créneau.
+creation-interval-seconds: 5

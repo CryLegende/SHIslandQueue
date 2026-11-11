@@ -8,13 +8,21 @@ import com.bgsoftware.superiorskyblock.api.wrappers.SuperiorPlayer; // Important
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.block.Biome; // Import pour le type Biome
-import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.command.PluginCommand;
+import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.InvalidConfigurationException;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.math.BigDecimal; // Import pour BigDecimal
+import java.nio.charset.StandardCharsets;
 import java.util.LinkedList;
 import java.util.Queue;
 import java.util.UUID;
@@ -32,20 +40,18 @@ public class SHIslandQueue extends JavaPlugin {
     private int creationIntervalSeconds;
     private BukkitTask queueProcessorTask;
 
-    private String msgPrefix;
-    private String msgAddedToQueue;
-    private String msgCreationInProgress;
-    private String msgCreationSuccessful;
-    private String msgCreationFailed;
-    private String msgAlreadyInQueue;
-    private String msgAlreadyHasIsland;
-    private String msgPlayerOffline;
-    private String msgNoDefaultSchematic;
+    private YamlConfiguration messages;
 
     @Override
     public void onEnable() {
         saveDefaultConfig();
-        loadConfigValues();
+        saveMessagesIfAbsent();
+        try {
+            loadSettings();
+        } catch (ConfigException e) {
+            getLogger().severe("Fichier " + e.getFile() + " illisible, valeurs du jar utilisées : " + e.getMessage());
+            useBundledDefaults();
+        }
 
         if (Bukkit.getPluginManager().getPlugin("SuperiorSkyblock2") == null) {
             getLogger().severe("SuperiorSkyblock2 non trouvé ! Le plugin " + this.getName() + " ne peut pas fonctionner.");
@@ -65,6 +71,12 @@ public class SHIslandQueue extends JavaPlugin {
 
         this.nextAvailableSlotTimestamp = System.currentTimeMillis();
         getServer().getPluginManager().registerEvents(new IslandCreationListener(this), this);
+        PluginCommand command = getCommand("shislandqueue");
+        if (command != null) {
+            AdminCommand admin = new AdminCommand(this);
+            command.setExecutor(admin);
+            command.setTabCompleter(admin);
+        }
         startQueueProcessor();
         getLogger().info(this.getName() + " activé ! Intervalle de création: " + creationIntervalSeconds + " secondes.");
     }
@@ -79,31 +91,84 @@ public class SHIslandQueue extends JavaPlugin {
         getLogger().info(this.getName() + " désactivé.");
     }
 
-    public void loadConfigValues() {
-        FileConfiguration config = getConfig();
-        config.addDefault("creation-interval-seconds", 10);
-        config.addDefault("messages.prefix", "&8[&bIslandQueue&8] &r");
-        config.addDefault("messages.added-to-queue", "%prefix%&aVous avez été ajouté à la file d'attente. Votre île (type par défaut) sera créée dans environ &e%time% &asecondes. Position : &e%position%&a.");
-        config.addDefault("messages.creation-in-progress", "%prefix%&6La création de votre île (type par défaut) est en cours...");
-        config.addDefault("messages.creation-successful", "%prefix%&2Votre île a été créée avec succès !");
-        config.addDefault("messages.creation-failed", "%prefix%&cLa création de votre île a échoué. Veuillez contacter un administrateur.");
-        config.addDefault("messages.already-in-queue", "%prefix%&cVous êtes déjà dans la file d'attente pour la création d'une île.");
-        config.addDefault("messages.already-has-island", "%prefix%&cVous possédez déjà une île !");
-        config.addDefault("messages.player-offline", "%prefix%&cLe joueur %player% était hors ligne lors de la tentative de création de son île.");
-        config.addDefault("messages.no-default-schematic", "%prefix%&cAucun schematic par défaut n'est configuré. Impossible de créer l'île.");
-        config.options().copyDefaults(true);
-        saveConfig();
+    /** Erreur de lecture d'un fichier de configuration : nom du fichier et cause. */
+    static final class ConfigException extends Exception {
+        private final String file;
 
-        creationIntervalSeconds = config.getInt("creation-interval-seconds");
-        msgPrefix = translateColors(config.getString("messages.prefix"));
-        msgAddedToQueue = config.getString("messages.added-to-queue");
-        msgCreationInProgress = config.getString("messages.creation-in-progress");
-        msgCreationSuccessful = config.getString("messages.creation-successful");
-        msgCreationFailed = config.getString("messages.creation-failed");
-        msgAlreadyInQueue = config.getString("messages.already-in-queue");
-        msgAlreadyHasIsland = config.getString("messages.already-has-island");
-        msgPlayerOffline = config.getString("messages.player-offline");
-        msgNoDefaultSchematic = config.getString("messages.no-default-schematic");
+        ConfigException(String file, String message) {
+            super(message);
+            this.file = file;
+        }
+
+        String getFile() {
+            return file;
+        }
+    }
+
+    /**
+     * Relit config.yml et messages.yml. Rien n'est remplacé tant que les deux fichiers ne sont pas lus sans erreur.
+     * La file, le créneau en cours et les joueurs en cours de traitement ne sont jamais touchés.
+     */
+    public void loadSettings() throws ConfigException {
+        YamlConfiguration config = readYaml("config.yml");
+        YamlConfiguration loadedMessages = readYaml("messages.yml");
+        creationIntervalSeconds = Math.max(1, config.getInt("creation-interval-seconds", 10));
+        messages = loadedMessages;
+    }
+
+    /** Valeurs du jar, quand un fichier est illisible au démarrage. */
+    private void useBundledDefaults() {
+        creationIntervalSeconds = Math.max(1, bundled("config.yml").getInt("creation-interval-seconds", 10));
+        messages = bundled("messages.yml");
+    }
+
+    private YamlConfiguration bundled(String name) {
+        try (InputStream in = getResource(name)) {
+            return in == null ? new YamlConfiguration() : YamlConfiguration.loadConfiguration(new InputStreamReader(in, StandardCharsets.UTF_8));
+        } catch (IOException e) {
+            return new YamlConfiguration();
+        }
+    }
+
+    /** Fichier du dossier du plugin lu strictement (erreur de syntaxe signalée), complété par les valeurs du jar. */
+    private YamlConfiguration readYaml(String name) throws ConfigException {
+        YamlConfiguration yaml = new YamlConfiguration();
+        try {
+            yaml.load(new File(getDataFolder(), name));
+        } catch (IOException | InvalidConfigurationException e) {
+            String reason = e.getMessage() == null ? e.toString() : e.getMessage().lines().findFirst().orElse("");
+            throw new ConfigException(name, reason);
+        }
+        yaml.setDefaults(bundled(name));
+        return yaml;
+    }
+
+    /**
+     * Premier démarrage avec ce fichier : messages.yml est créé à partir de la section messages de config.yml
+     * (textes déjà en place), complétée par les textes du jar. La section de config.yml n'est plus lue ensuite.
+     */
+    private void saveMessagesIfAbsent() {
+        File file = new File(getDataFolder(), "messages.yml");
+        if (file.exists()) {
+            return;
+        }
+        saveResource("messages.yml", false);
+        ConfigurationSection old = YamlConfiguration.loadConfiguration(new File(getDataFolder(), "config.yml")).getConfigurationSection("messages");
+        if (old == null) {
+            return;
+        }
+        YamlConfiguration created = YamlConfiguration.loadConfiguration(file);
+        for (String key : old.getKeys(false)) {
+            if (old.isString(key)) {
+                created.set(key, old.getString(key));
+            }
+        }
+        try {
+            created.save(file);
+            getLogger().info("Messages repris de config.yml dans messages.yml (la section messages de config.yml ne sert plus).");
+        } catch (IOException e) {
+            getLogger().warning("messages.yml non écrit : " + e.getMessage());
+        }
     }
 
     private String translateColors(String message) {
@@ -112,42 +177,13 @@ public class SHIslandQueue extends JavaPlugin {
     }
 
     public String getMessage(String key, String... replacements) {
-        String messageFormat;
-        switch (key) {
-            case "added-to-queue":
-                messageFormat = msgAddedToQueue;
-                break;
-            case "creation-in-progress":
-                messageFormat = msgCreationInProgress;
-                break;
-            case "creation-successful":
-                messageFormat = msgCreationSuccessful;
-                break;
-            case "creation-failed":
-                messageFormat = msgCreationFailed;
-                break;
-            case "already-in-queue":
-                messageFormat = msgAlreadyInQueue;
-                break;
-            case "already-has-island":
-                messageFormat = msgAlreadyHasIsland;
-                break;
-            case "player-offline":
-                messageFormat = msgPlayerOffline;
-                break;
-            case "no-default-schematic":
-                messageFormat = msgNoDefaultSchematic;
-                break;
-            default:
-                messageFormat = "%prefix%&cMessage inconnu (" + this.getName() + "): " + key;
+        String message = messages == null ? null : messages.getString(key);
+        if (message == null) {
+            message = "&cMessage inconnu (" + this.getName() + "): " + key;
         }
-        String actualPrefix = (msgPrefix != null && !msgPrefix.isEmpty()) ? msgPrefix : "&8[&e" + this.getName() + "&8] &r";
-        messageFormat = messageFormat.replace("%prefix%", actualPrefix);
-        String message = messageFormat;
-        for (int i = 0; i < replacements.length; i += 2) {
-            if (i + 1 < replacements.length) {
-                message = message.replace(replacements[i], replacements[i + 1]);
-            }
+        message = message.replace("%prefix%", messages == null ? "" : translateColors(messages.getString("prefix", "")));
+        for (int i = 0; i + 1 < replacements.length; i += 2) {
+            message = message.replace(replacements[i], replacements[i + 1]);
         }
         return translateColors(message);
     }

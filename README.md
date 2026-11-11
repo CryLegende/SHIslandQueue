@@ -14,7 +14,7 @@
 
 ## Présentation
 
-Gère une file d'attente pour la création d'îles SuperiorSkyBlock2.
+Gère une file d'attente pour la création d'îles SuperiorSkyBlock2 : quand plusieurs joueurs créent leur île en même temps, les créations sont étalées, une par créneau (`creation-interval-seconds`). Un joueur qui arrive pendant un créneau occupé est mis en file et son île est créée à son tour. La file n'est pas une commande joueur.
 
 Utilisé sur : **Opale**.
 
@@ -22,14 +22,34 @@ Utilisé sur : **Opale**.
 
 - Obligatoires : `SuperiorSkyblock2`
 
+## Commandes
+
+| Commande | Alias | Description | Permission |
+|---|---|---|---|
+| `/shislandqueue reload` | — | Recharge `config.yml` et `messages.yml` sans toucher à la file ni au créneau en cours. | `shislandqueue.admin.reload` |
+| `/shislandqueue list` | — | Affiche la file d'attente, l'intervalle réglé et le temps avant le prochain créneau. | `shislandqueue.admin.list` |
+
+Les deux sous-commandes marchent depuis la console.
+
+## Permissions
+
+| Permission | Description | Par défaut |
+|---|---|---|
+| `shislandqueue.admin` | Toutes les commandes d'administration (parent des deux suivantes) | `op` |
+| `shislandqueue.admin.reload` | Recharger `config.yml` et `messages.yml` | `false` |
+| `shislandqueue.admin.list` | Voir la file d'attente | `false` |
+
 ## Configuration
 
 Fichiers par défaut repris du serveur (secrets remplacés par `CHANGE_ME`). Cliquez sur un fichier pour l'ouvrir :
 
 <pre>
 plugins/SHIslandQueue/
-└── <a href="src/main/resources/config.yml">config.yml</a>
+├── <a href="src/main/resources/config.yml">config.yml</a>
+└── <a href="src/main/resources/messages.yml">messages.yml</a>
 </pre>
+
+Au premier démarrage avec `messages.yml`, le fichier est créé à partir de la section `messages` de l'ancien `config.yml` (textes déjà en place), complétée par ceux du jar ; cette section n'est plus lue ensuite.
 
 ## Compilation
 
